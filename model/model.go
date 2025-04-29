@@ -117,8 +117,8 @@ type ResearchPaper struct {
 	PDFPath             string    `gorm:"column:pdf_path;type:text"`
 	ResearchPaperStatus string    `gorm:"column:research_paper_status"`
 	RejectedReason      string    `gorm:"column:rejected_reason" json:"rejected_reason,omitempty"`
-	FulltextID          int       `gorm:"column:fulltext_id"`
-	CleantextID         int       `gorm:"column:cleantext_id"`
+	FulltextID          *int       `gorm:"column:fulltext_id"`
+	CleantextID         *int       `gorm:"column:cleantext_id"`
 	UserID              int       `gorm:"column:user_id"`
 	SubmittedAt         time.Time `gorm:"column:submitted_at;type:timestamp"`
 	PublishedAt         time.Time `gorm:"column:published_at;type:timestamp"`
@@ -410,19 +410,21 @@ func (Notification) TableName() string {
 type ChatSession struct {
 	SessionID uuid.UUID     `gorm:"primaryKey;column:session_id"`
 	UserID    int           `gorm:"column:user_id"`
-	User 	ScholarizeUser `gorm:"references:UserID"`
 	ResearchPaperID int     `gorm:"column:research_paper_id"` 
-	ResearchPaper   ResearchPaper `gorm:"references:ResearchPaperID"`
 	CreatedAt time.Time 	`gorm:"column:created_at"`
 	UpdatedAt time.Time 	`gorm:"column:updated_at"`
+
+	User 	ScholarizeUser `gorm:"references:UserID"`
+	ResearchPaper   ResearchPaper `gorm:"references:ResearchPaperID"`
 }
 
 
 type ChatHistory struct {
 	HistoryID uuid.UUID     `gorm:"primaryKey;column:history_id"`
 	SessionID uuid.UUID     `gorm:"column:session_id"`
-	Session ChatSession `gorm:"references:SessionID"`
 	Message json.RawMessage `gorm:"column:message;type:jsonb"`
 	CreatedAt time.Time 	`gorm:"column:created_at"`
 	UpdatedAt time.Time 	`gorm:"column:updated_at"`
+
+	Session ChatSession 	`gorm:"references:SessionID"`
 }

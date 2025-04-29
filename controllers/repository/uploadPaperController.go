@@ -161,17 +161,17 @@ func HandleResearchPaperUpload(c *gin.Context) {
 	}
 
 	// Upload the clean text to the database
-	cleanTextId, err := uploadCleanTextToDatabase(uploadResp.OptimizedText)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload clean text to database"})
-		return
-	}
+	// cleanTextId, err := uploadCleanTextToDatabase(uploadResp.OptimizedText)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload clean text to database"})
+	// 	return
+	// }
 
-	fullTextId, err := uploadFullTextToDatabase(fullText)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload full text to database"})
-		return
-	}
+	// fullTextId, err := uploadFullTextToDatabase(fullText)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload full text to database"})
+	// 	return
+	// }
 
 	uniqueID, err := generator.GenerateResearchPaperUUID()
 	if err != nil {
@@ -191,8 +191,8 @@ func HandleResearchPaperUpload(c *gin.Context) {
 		PDFPath:             uploadResp.FileName,
 		ResearchPaperStatus: "awaiting",
 		RejectedReason:      "none",
-		FulltextID:          fullTextId,
-		CleantextID:         cleanTextId,
+		// FulltextID:          &fullTextId,
+		// CleantextID:         &cleanTextId,
 		UserID:              userId,
 		SubmittedAt:         time.Now(),
 		PublishedAt:         time.Now(),
