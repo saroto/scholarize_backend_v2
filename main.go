@@ -38,7 +38,8 @@ func main() {
 	meilisearch.InitMeiliSearch()
 
 	// Run database migrations
-	if err := database.AutoMigrateDB(); err != nil {
+	err = database.AutoMigrateDB();
+	if err != nil {
 		fmt.Printf("Failed to migrate the database: %v", err)
 	}
 

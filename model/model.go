@@ -1,8 +1,10 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -402,4 +404,25 @@ type Notification struct {
 
 func (Notification) TableName() string {
 	return "notification"
+}
+
+
+type ChatSession struct {
+	SessionID uuid.UUID     `gorm:"primaryKey;column:session_id"`
+	UserID    int           `gorm:"column:user_id"`
+	User 	ScholarizeUser `gorm:"references:UserID"`
+	ResearchPaperID int     `gorm:"column:research_paper_id"` 
+	ResearchPaper   ResearchPaper `gorm:"references:ResearchPaperID"`
+	CreatedAt time.Time 	`gorm:"column:created_at"`
+	UpdatedAt time.Time 	`gorm:"column:updated_at"`
+}
+
+
+type ChatHistory struct {
+	HistoryID uuid.UUID     `gorm:"primaryKey;column:history_id"`
+	SessionID uuid.UUID     `gorm:"column:session_id"`
+	Session ChatSession `gorm:"references:SessionID"`
+	Message json.RawMessage `gorm:"column:message;type:jsonb"`
+	CreatedAt time.Time 	`gorm:"column:created_at"`
+	UpdatedAt time.Time 	`gorm:"column:updated_at"`
 }
