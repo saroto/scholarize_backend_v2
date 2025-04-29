@@ -137,7 +137,7 @@ func collabMemberHasSchedulePermission(userID, collabID int, requiredPerm string
 		fmt.Printf("Therefore, he has permission: %s\n", requiredPerm)
 		return true
 	}
-
+	
 	// Check if the required permission is in the collab member permissions
 	if !collabMemberHasPermission(collabID, requiredPerm) {
 		fmt.Printf("User %d in collab %d does not have permission: %s\n", userID, collabID, requiredPerm)
