@@ -1,7 +1,11 @@
 package repository
 
 import (
+	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"root/constant"
 	"root/controllers/notification"
 	"root/database"
@@ -12,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 // get research papers by department and return model Research Paper
@@ -334,6 +339,9 @@ func HandleApproveRejectSubmission(c *gin.Context) {
 			return
 		}
 
+		// Send request to python (AI service) after the paper is approved
+		go handelSentRequestToPythonService(paper.ResearchPaperID, nil)
+
 		// Insert approval notification
 		err := notification.InsertApprovalNotification(paper.ResearchTitle, paper.UserID)
 		if err != nil {
@@ -376,4 +384,71 @@ func isPaperBelongsToDepartment(departmentID, paperID int) bool {
 	var paperDepartment model.ResearchPaperDepartment
 	result := database.Db.Where("research_paper_id = ? AND department_id = ?", paperID, departmentID).First(&paperDepartment)
 	return result.Error == nil
+}
+
+// sent request to python (AI service) after the paper is approved
+// argument: paper info
+func handelSentRequestToPythonService(paperID int, c *gin.Context) {
+	// Get paper info
+	var paperInfo model.ResearchPaper
+	python_endpoint := viper.GetString("python.base_url")
+
+	result := database.Db.First(&paperInfo, paperID)
+	if result.Error != nil {
+		log.Printf("Error fetching research paper info: %v", result.Error)
+		return
+	}
+
+	// Check if the paper is approved
+	if strings.ToLower(paperInfo.ResearchPaperStatus) != "published" {
+		log.Printf("Research paper is not approved: %s", paperInfo.ResearchPaperStatus)
+		return
+	}
+
+	// Construct the URL for the Python service - FIXED URL formatting
+	endpoint := fmt.Sprintf("%s/api/response", python_endpoint)
+	// get paper type
+
+	// Create form data
+	formData := url.Values{}
+	formData.Set("research_paper_id", fmt.Sprintf("%d", paperID))
+	formData.Set("research_title", paperInfo.ResearchTitle)
+	formData.Set("author", paperInfo.Author)
+	formData.Set("advisors", paperInfo.Advisor) // Note: Changed from advisor to advisors to match FastAPI
+	formData.Set("pdf_path", paperInfo.PDFPath)
+	formData.Set("tag", paperInfo.Tag)
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	// Create request with form data
+	req, err := http.NewRequest("POST", endpoint, strings.NewReader(formData.Encode()))
+	if err != nil {
+		log.Printf("Error creating request: %v", err)
+		return
+	}
+
+	// Set headers for form data
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	// Send request
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error sending request to AI service: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Check response status
+	if resp.StatusCode != http.StatusOK {
+		// Read response body for error details
+		respBody, _ := io.ReadAll(resp.Body)
+		log.Printf("AI service returned non-OK response (status %d): %s", resp.StatusCode, string(respBody))
+		return
+	}
+
+	// Log successful embedding creation
+	log.Printf("Successfully sent paper ID %d to AI service for embedding creation", paperID)
 }
