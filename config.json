@@ -39,7 +39,7 @@
   },
   "client": {
     "userpanel": "http://localhost:3000",
-    "adminpanel": "https://cpanel.scholarize.live"
+    "adminpanel": "http://localhost:3001"
   },
   "python": {
     "base_url": "http://localhost:8000"
