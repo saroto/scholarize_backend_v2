@@ -5,6 +5,7 @@ COPY go.mod go.sum ./
 RUN apk update && apk add --no-cache tzdata
 RUN go mod tidy
 COPY . .
+COPY config.json /scholarize_backend/config.json
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o scholarize_backend main.go
 
 # Run Stage

@@ -9,7 +9,7 @@
     "auto_migration": true
   },
   "meilisearch": {
-    "host": "http://localhost:7700",
+    "host": "http://159.223.37.185:2222",
     "api_key": "WeWillOnlyDoPreOralDefense",
     "index": {
       "research_paper": "research_paper_index",
@@ -41,6 +41,9 @@
     "userpanel": "http://localhost:3000",
     "adminpanel": "http://localhost:3001"
   },
+  "python": {
+    "base_url": "http://localhost:8000"
+  },
   "superadmin": {
     "email": "scholarize777@gmail.com"
   },
@@ -49,8 +52,8 @@
     "gmail.com": true
   },
   "file_service": {
-    "base_url2": "http://localhost:8001/api",
-    "base_url": "http://localhost:8001/api",
+    "base_url2": "http://localhost:8000/api",
+    "base_url": "http://159.223.37.185:2223/api",
     "backup_base_url": "http://10.104.0.3:8890/api",
     "endpoints": {
       "cleantext": "/cleantext",
