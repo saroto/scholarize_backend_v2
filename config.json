@@ -17,6 +17,9 @@
       "cleantext": "cleantext_tmey"
     }
   },
+  "semantic_search": {
+    "host": "http://localhost:8000"
+  },
   "mailsmtp": {
     "host": "smtp.gmail.com",
     "port": "587",
