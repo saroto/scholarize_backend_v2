@@ -406,7 +406,7 @@ func handelSentRequestToPythonService(paperID int, c *gin.Context) {
 	}
 
 	// Construct the URL for the Python service - FIXED URL formatting
-	endpoint := fmt.Sprintf("%s/api/response", python_endpoint)
+	endpoint := fmt.Sprintf("%s/api/pdf", python_endpoint)
 	// get paper type
 
 	// Create form data
