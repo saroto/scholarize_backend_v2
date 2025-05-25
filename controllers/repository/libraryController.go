@@ -10,12 +10,22 @@ import (
 	"root/database"
 	"root/meilisearch"
 	"root/model"
+	"root/semantic_search"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+var searchResult struct {
+    Message        string          `json:"message"`
+    Query          string          `json:"query"`
+    PapersFound    int             `json:"papers_found"`
+    PapersID       string          `json:"papers_id"`  // This is a string that needs conversion
+    // ResearchPapers []ResearchPaper `json:"research_papers"`
+}
 
 func reverseArray(arr []int) []int {
 	sortArr := arr
@@ -68,6 +78,7 @@ func MeiliSearchQueryFilter(searchTerm string, departmentFilter, researchTypeFil
 
 	baselineIDs := []int{}
 
+	fmt.Println("Search Term: ", searchTerm)
 	if searchTerm != "" {
 
 		var uniqueIDs []int
@@ -157,6 +168,114 @@ func MeiliSearchQueryFilter(searchTerm string, departmentFilter, researchTypeFil
 	// 		query = query.Order("research_paper.research_title " + sortOrder)
 	// 	}
 	// }
+
+	// Apply published year filter
+	if len(publishedYearFilter) > 0 {
+		query = query.Where("EXTRACT(YEAR FROM research_paper.published_at) IN (?)", publishedYearFilter).
+			Order(fmt.Sprintf("research_paper.published_at %s", sortOrder))
+	}
+
+	var results []model.ResearchPaper
+	// Select only the IDs of the research papers
+	if err := query.Scan(&results).Error; err != nil {
+		return nil, err
+	}
+
+	// Extract only the IDs from the results
+	var paperIds []int
+	for _, result := range results {
+		paperIds = append(paperIds, result.ResearchPaperID)
+	}
+
+	// Sort paper by year if year filter is not empty
+	if len(publishedYearFilter) > 0 {
+		// Sort the paper by year
+		return paperIds, nil
+	}
+
+	if len(baselineIDs) > 0 {
+		paperIds = OrderArray(paperIds, baselineIDs)
+	}
+
+	return paperIds, nil
+}
+
+
+func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchTypeFilter, publishedYearFilter []string, sortOrder string) ([]int, error) {
+	query := database.Db.Model(&model.ResearchPaper{}).
+		Select("DISTINCT research_paper.research_paper_id, research_paper.published_at, research_paper.research_title").
+		Joins("JOIN research_type ON research_paper.research_type_id = research_type.research_type_id").
+		Joins("JOIN researchpaperdepartment ON research_paper.research_paper_id = researchpaperdepartment.research_paper_id").
+		Joins("JOIN department ON researchpaperdepartment.department_id = department.department_id").
+		Where("research_paper.research_paper_status = 'published'")
+
+
+	fmt.Println("Search Term: ", query)
+	// Apply department id filter
+	// if len(departmentFilter) > 0 {
+	// 	query = query.Where("department.department_id IN (?)", departmentFilter)
+	// }
+
+	if len(departmentFilter) > 0 {
+		departmentCount := len(departmentFilter)
+		query = query.Where("department.department_id IN (?)", departmentFilter).
+			Group("research_paper.research_paper_id").
+			Having("COUNT(DISTINCT department.department_id) = ?", departmentCount)
+	}
+
+	// Apply research type id filter
+	if len(researchTypeFilter) > 0 {
+		query = query.Where("research_type.research_type_id IN (?)", researchTypeFilter)
+	}
+
+	baselineIDs := []int{}
+
+	if searchTerm != "" {
+
+		var uniqueIDs []int
+
+		searchResult, err := semantic_search.SearchQuery(searchTerm)
+
+		fmt.Println("Search Result: ", searchResult)
+		if err != nil {
+			return nil, err
+		}
+
+		var paperIDs []int
+				// Check if papers_id was provided directly
+		if papersIDInterface, ok := searchResult["papers_id"]; ok {
+			// If papers_id is an array directly
+			if papersIDArray, ok := papersIDInterface.([]interface{}); ok {
+				for _, idInterface := range papersIDArray {
+					if idFloat, ok := idInterface.(float64); ok {
+						paperIDs = append(paperIDs, int(idFloat))
+					}
+				}
+			} else if papersIDString, ok := papersIDInterface.(string); ok {
+				// If papers_id is a string that needs parsing
+				idStrings := strings.Split(papersIDString, ",")
+				for _, idStr := range idStrings {
+					idStr = strings.TrimSpace(idStr)
+					id, err := strconv.Atoi(idStr)
+					if err != nil {
+						continue // Skip invalid IDs
+					}
+					paperIDs = append(paperIDs, id)
+				}
+			}
+		}
+
+		uniqueIDs = paperIDs
+		
+		fmt.Println("ID From semantic: ", uniqueIDs)
+
+		baselineIDs = uniqueIDs
+		query = query.Where("research_paper.research_paper_id IN (?)", uniqueIDs)
+	} else {
+		if len(publishedYearFilter) == 0 {
+			query = query.Order("research_paper.research_title " + sortOrder)
+		}
+	}
 
 	// Apply published year filter
 	if len(publishedYearFilter) > 0 {
@@ -356,6 +475,7 @@ func HandleResearchPaperSearch(c *gin.Context) {
 
 	// Fetch detailed information for each paper
 	var papersInfo []constant.QueryResearchPaperInfo
+	fmt.Println("Paper IDs: ", paperIds)
 	for _, paperId := range paperIds {
 		paperInfo, err := GetEachResearchPaperInfoOnQuery(paperId)
 		if err != nil {
@@ -366,6 +486,33 @@ func HandleResearchPaperSearch(c *gin.Context) {
 	}
 
 	// Respond with the fetched paper information
+	c.JSON(http.StatusOK, gin.H{
+		"papers": papersInfo,
+	})
+}
+
+func HandleResearchPaperSemanticSearch(c *gin.Context) {
+	searchTerm := c.Query("search")
+	departmentFilters := c.QueryArray("department")
+	researchTypeFilters := c.QueryArray("research_type")
+	publishedYearFilters := c.QueryArray("published_year")
+	sortOrder := c.DefaultQuery("sort", "ASC")
+
+	paperIds, err := SemanticSearchQueryFilter(searchTerm, departmentFilters, researchTypeFilters, publishedYearFilters, sortOrder)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching paper IDs"})
+		return
+	}
+
+	var papersInfo []constant.QueryResearchPaperInfo
+	for _, paperId := range paperIds {
+		paperInfo, err := GetEachResearchPaperInfoOnQuery(paperId)
+		if err != nil {
+			log.Printf("Error fetching info for paper ID %d: %v", paperId, err)
+			continue
+		}
+		papersInfo = append(papersInfo, paperInfo)
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"papers": papersInfo,
 	})
