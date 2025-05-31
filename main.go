@@ -93,7 +93,7 @@ func main() {
 
 		api.GET("/joincollab/:token", collaboration.HandleJoinCollab)
 
-		api.GET("/browse", repository.HandleResearchPaperSearch)
+		api.GET("/browse", repository.HandleResearchPaperSemanticSearch)
 	}
 
 	// Group the routes requires Jwt Token
