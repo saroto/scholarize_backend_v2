@@ -7,6 +7,7 @@ import (
 	"root/config"
 	"root/constant"
 	"root/controllers/administrator"
+	"root/controllers/chat"
 	"root/controllers/collaboration"
 	"root/controllers/notification"
 	"root/controllers/repository"
@@ -92,7 +93,7 @@ func main() {
 
 		api.GET("/joincollab/:token", collaboration.HandleJoinCollab)
 
-		api.GET("/browse", repository.HandleResearchPaperSearch)
+		api.GET("/browse", repository.HandleResearchPaperSemanticSearch)
 	}
 
 	// Group the routes requires Jwt Token
@@ -119,6 +120,13 @@ func main() {
 		repo.GET("/mypublications/awaiting/:id", repository.HandlePreviewAwaitingPaper)
 		repo.GET("/mypublications/rejected/:id", repository.HandlePreviewRejectedPaper)
 		repo.POST("/mypublications/rejected/:id", repository.HandleResubmitRejectedPaper)
+	}
+
+	//Chat Routes
+	chatSession := api.Group("/chat")
+	{
+		chatSession.GET("/session/:sessionID",chat.HandleGetChatSession)
+		chatSession.POST("/update-session/:sessionID", chat.UpdateChatSessionSecure)
 	}
 
 	// Start using HOD middleware for the REPOSITORY routes
