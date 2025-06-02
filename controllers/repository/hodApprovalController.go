@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -325,7 +326,29 @@ func HandleApproveRejectSubmission(c *gin.Context) {
 	}
 
 	// Approve the paper
+	// if approvalStatus == "approve" {
+	// 	result := database.Db.Model(&paper).Update("research_paper_status", "published")
+	// 	if result.Error != nil {
+	// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error approving research paper"})
+	// 		return
+	// 	}
+
+	// 	// Update the published date
+	// 	result = database.Db.Model(&paper).Update("published_at", time.Now())
+	// 	if result.Error != nil {
+	// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating published date"})
+	// 		return
+	// 	}
+	// 	result = database.Db.Model(&paper).Update("pdf_processing_status", string(model.PdfProcessingStatusProcessing))
+
+	// 	// Send request to python (AI service) after the paper is approved
+	// 	go handleSentRequestToPythonService(paper.ResearchPaperID)
+
+	// }
+
+	// TO DO: using research_paper_id and go routine
 	if approvalStatus == "approve" {
+		// First update to published status
 		result := database.Db.Model(&paper).Update("research_paper_status", "published")
 		if result.Error != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error approving research paper"})
@@ -339,15 +362,32 @@ func HandleApproveRejectSubmission(c *gin.Context) {
 			return
 		}
 
-		// Send request to python (AI service) after the paper is approved
-		go handelSentRequestToPythonService(paper.ResearchPaperID, nil)
-
-		// Insert approval notification
-		err := notification.InsertApprovalNotification(paper.ResearchTitle, paper.UserID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error inserting approval notification"})
+		// Set PDF processing status to processing
+		result = database.Db.Model(&paper).Update("pdf_processing_status", string(model.PdfProcessingStatusProcessing))
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating PDF processing status"})
 			return
 		}
+
+		// Process PDF asynchronously with proper error handling
+		go func(paperID int) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("PDF processing panicked for paper %d: %v", paperID, r)
+					// Update status to failed if panic occurs
+					database.Db.Model(&model.ResearchPaper{}).Where("research_paper_id = ?", paperID).
+						Update("pdf_processing_status", string(model.PdfProcessingStatusFailed))
+				}
+			}()
+
+			if err := handleSentRequestToPythonService(paperID); err != nil {
+				log.Printf("PDF processing failed for paper %d: %v", paperID, err)
+				// The handleSentRequestToPythonService function already handles status updates
+				// but you could add additional logic here if needed
+			} else {
+				log.Printf("PDF processing completed successfully for paper %d", paperID)
+			}
+		}(paper.ResearchPaperID)
 	}
 
 	// Reject the paper
@@ -388,21 +428,17 @@ func isPaperBelongsToDepartment(departmentID, paperID int) bool {
 
 // sent request to python (AI service) after the paper is approved
 // argument: paper info
-func handelSentRequestToPythonService(paperID int, c *gin.Context) {
+func handleSentRequestToPythonService(paperID int) error {
 	// Get paper info
 	var paperInfo model.ResearchPaper
-	python_endpoint := viper.GetString("python.base_url")
+
+	var response constant.PythonResponse
+	python_endpoint := viper.GetString("semantic_search.host")
 
 	result := database.Db.First(&paperInfo, paperID)
 	if result.Error != nil {
 		log.Printf("Error fetching research paper info: %v", result.Error)
-		return
-	}
-
-	// Check if the paper is approved
-	if strings.ToLower(paperInfo.ResearchPaperStatus) != "published" {
-		log.Printf("Research paper is not approved: %s", paperInfo.ResearchPaperStatus)
-		return
+		return result.Error
 	}
 
 	// Construct the URL for the Python service - FIXED URL formatting
@@ -427,7 +463,7 @@ func handelSentRequestToPythonService(paperID int, c *gin.Context) {
 	req, err := http.NewRequest("POST", endpoint, strings.NewReader(formData.Encode()))
 	if err != nil {
 		log.Printf("Error creating request: %v", err)
-		return
+		return fmt.Errorf("error creating request: %v", err)
 	}
 
 	// Set headers for form data
@@ -437,18 +473,73 @@ func handelSentRequestToPythonService(paperID int, c *gin.Context) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Error sending request to AI service: %v", err)
-		return
+		return fmt.Errorf("error sending request to AI service: %v", err)
 	}
+
 	defer resp.Body.Close()
-
-	// Check response status
-	if resp.StatusCode != http.StatusOK {
-		// Read response body for error details
-		respBody, _ := io.ReadAll(resp.Body)
-		log.Printf("AI service returned non-OK response (status %d): %s", resp.StatusCode, string(respBody))
-		return
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Error reading response body: %v", err)
+		// Update status to failed
+		database.Db.Model(&paperInfo).Update("pdf_processing_status", string(model.PdfProcessingStatusFailed))
+		return fmt.Errorf("error reading response body: %v", err)
 	}
 
+	if err := json.Unmarshal(respBody, &response); err != nil {
+		log.Printf("Error parsing JSON response: %v", err)
+		log.Printf("Raw response: %s", string(respBody))
+		return fmt.Errorf("error parsing JSON response: %v", err)
+	}
+
+	if response.PDFProcessStatus == "failed" {
+		log.Println("reach here")
+		result = database.Db.Model(&paperInfo).Update("research_paper_status", "awaiting")
+		if result.Error != nil {
+			log.Printf("Error updating research paper status to awaiting: %v", result.Error)
+			return fmt.Errorf("error updating research paper status to awaiting: %v", result.Error)
+		}
+		result = database.Db.Model(&paperInfo).Update("pdf_processing_status", string(model.PdfProcessingStatusFailed))
+		if result.Error != nil {
+			log.Printf("Error updating PDF processing status to failed: %v", result.Error)
+			return fmt.Errorf("error updating PDF processing status to failed: %v", result.Error)
+		}
+		// failPdfProcessSMTP := viper.GetBool("mailsmtp.toggle.userpanel.fail_pdf_process")
+		// if failPdfProcessSMTP {
+		// 	emailBody := mail.EmailTemplateData{
+		// 		PreviewHeader: "PDF Processing Failed - " + paperInfo.ResearchTitle,
+		// 		EmailPurpose:  "Your PDF processing has failed. Please check the system for more details.",
+		// 		ActionURL:     viper.GetString("client.userpanel") + "/papers/" + fmt.Sprintf("%d", paperInfo.ResearchPaperID),
+		// 		Action:        "View Paper",
+		// 		EmailEnding:   "If you believe this is a mistake, please ignore this message.",
+		// 	}
+		// 	emailBodyData, err := mail.CustomizeHTML(emailBody)
+		// 	if err != nil {
+		// 		log.Printf("Error customizing email template: %v", err)
+		// 		return fmt.Errorf("error customizing email template: %v", err)
+		// 	}
+
+		// 	// Send email to user
+		// 	errSending := mail.SendEmail(user.UserEmail, "Scholarize - You have been invited to join collaboration", emailBodyData)
+		// 	if errSending != nil {
+		// 		log.Printf("Error sending email: %v", errSending)
+		// 		return fmt.Errorf("error sending email: %v", errSending)
+		// 	}
+		// }
+	} else {
+		result = database.Db.Model(&paperInfo).Update("pdf_processing_status", string(model.PdfProcessingStatusSuccess))
+		if result.Error != nil {
+			log.Printf("Error updating PDF processing status to success: %v", result.Error)
+			return fmt.Errorf("error updating PDF processing status to success: %v", result.Error)
+		}
+		// Insert approval notification
+		err := notification.InsertApprovalNotification(paperInfo.ResearchTitle, paperInfo.UserID)
+		if err != nil {
+			log.Printf("Error inserting approval notification: %v", err)
+			return fmt.Errorf("error inserting approval notification: %v", err)
+		}
+	}
 	// Log successful embedding creation
 	log.Printf("Successfully sent paper ID %d to AI service for embedding creation", paperID)
+
+	return nil
 }

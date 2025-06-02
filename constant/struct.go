@@ -261,3 +261,11 @@ type NewScheduleForCollabs struct {
 	RepeatInterval    int       `gorm:"column:repeat_interval"`
 	RepeatGroup       string    `gorm:"column:repeat_group;type:text"`
 }
+
+type PythonResponse struct {
+	Message          string      `json:"message"`
+	Data             interface{} `json:"data"`
+	PDFProcessStatus string      `json:"pdf_process_status"`
+	ErrorType        string      `json:"error_type,omitempty"`
+	StatusCode       int         `json:"status_code,omitempty"`
+}
