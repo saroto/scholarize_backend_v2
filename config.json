@@ -6,7 +6,7 @@
     "user": "scholarize",
     "password": "fypiscrying",
     "dbname": "db_scholarize",
-    "auto_migration": true
+    "auto_migration": false
   },
   "meilisearch": {
     "host": "http://159.223.37.185:2222",
@@ -36,7 +36,8 @@
         "collab_invite": true,
         "add_schedule": true,
         "update_schedule": true,
-        "delete_schedule": true
+        "delete_schedule": true,
+        "fail_pdf_process": true
       }
     }
   },

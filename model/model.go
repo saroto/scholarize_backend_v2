@@ -105,23 +105,33 @@ func (ResearchType) TableName() string {
 	return "research_type"
 }
 
+// enum for pdf_processing_status
+type PdfProcessingStatus string
+
+const (
+	PdfProcessingStatusProcessing PdfProcessingStatus = "processing"
+	PdfProcessingStatusSuccess    PdfProcessingStatus = "success"
+	PdfProcessingStatusFailed     PdfProcessingStatus = "failed"
+)
+
 type ResearchPaper struct {
-	ResearchPaperID     int       `gorm:"primaryKey;column:research_paper_id"`
-	PublicID            string    `gorm:"column:public_id"`
-	ResearchTypeID      int       `gorm:"column:research_type_id"`
-	ResearchTitle       string    `gorm:"column:research_title;type:text"`
-	Abstract            string    `gorm:"column:abstract;type:text"`
-	Tag                 string    `gorm:"column:tag;type:text"`
-	Author              string    `gorm:"column:author;type:text"`
-	Advisor             string    `gorm:"column:advisor;type:text"`
-	PDFPath             string    `gorm:"column:pdf_path;type:text"`
-	ResearchPaperStatus string    `gorm:"column:research_paper_status"`
-	RejectedReason      string    `gorm:"column:rejected_reason" json:"rejected_reason,omitempty"`
-	FulltextID          *int       `gorm:"column:fulltext_id"`
-	CleantextID         *int       `gorm:"column:cleantext_id"`
-	UserID              int       `gorm:"column:user_id"`
-	SubmittedAt         time.Time `gorm:"column:submitted_at;type:timestamp"`
-	PublishedAt         time.Time `gorm:"column:published_at;type:timestamp"`
+	ResearchPaperID     int                 `gorm:"primaryKey;column:research_paper_id"`
+	PublicID            string              `gorm:"column:public_id"`
+	ResearchTypeID      int                 `gorm:"column:research_type_id"`
+	ResearchTitle       string              `gorm:"column:research_title;type:text"`
+	Abstract            string              `gorm:"column:abstract;type:text"`
+	Tag                 string              `gorm:"column:tag;type:text"`
+	Author              string              `gorm:"column:author;type:text"`
+	Advisor             string              `gorm:"column:advisor;type:text"`
+	PDFPath             string              `gorm:"column:pdf_path;type:text"`
+	ResearchPaperStatus string              `gorm:"column:research_paper_status"`
+	PdfProcessingStatus PdfProcessingStatus `gorm:"column:pdf_processing_status;default:'processing'"`
+	RejectedReason      string              `gorm:"column:rejected_reason" json:"rejected_reason,omitempty"`
+	FulltextID          *int                `gorm:"column:fulltext_id"`
+	CleantextID         *int                `gorm:"column:cleantext_id"`
+	UserID              int                 `gorm:"column:user_id"`
+	SubmittedAt         time.Time           `gorm:"column:submitted_at;type:timestamp"`
+	PublishedAt         time.Time           `gorm:"column:published_at;type:timestamp"`
 }
 
 func (ResearchPaper) TableName() string {
@@ -406,7 +416,6 @@ func (Notification) TableName() string {
 	return "notification"
 }
 
-
 type ChatSession struct {
     SessionID     uuid.UUID       `gorm:"primaryKey;column:session_id"`
     UserID        int             `gorm:"column:user_id"`
@@ -427,3 +436,4 @@ type ChatSession struct {
 
 // 	Session ChatSession 	`gorm:"references:SessionID"`
 // }
+
