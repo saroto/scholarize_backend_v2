@@ -417,22 +417,23 @@ func (Notification) TableName() string {
 }
 
 type ChatSession struct {
-	SessionID       uuid.UUID `gorm:"primaryKey;column:session_id"`
-	UserID          int       `gorm:"column:user_id"`
-	ResearchPaperID int       `gorm:"column:research_paper_id"`
-	CreatedAt       time.Time `gorm:"column:created_at"`
-	UpdatedAt       time.Time `gorm:"column:updated_at"`
-
-	User          ScholarizeUser `gorm:"references:UserID"`
-	ResearchPaper ResearchPaper  `gorm:"references:ResearchPaperID"`
+    SessionID     uuid.UUID       `gorm:"primaryKey;column:session_id"`
+    UserID        int             `gorm:"column:user_id"`
+    PaperID       int             `gorm:"column:paper_id"` 
+    Message       json.RawMessage `gorm:"column:message;type:json"`
+    CreatedAt     time.Time       `gorm:"column:created_at"`
+    UpdatedAt     time.Time       `gorm:"column:updated_at"`
+    // User          ScholarizeUser  `gorm:"foreignKey:UserID;references:UserID"`
+    // ResearchPaper ResearchPaper   `gorm:"foreignKey:PaperID;references:ReesearchPaperID"` 
 }
 
-type ChatHistory struct {
-	HistoryID uuid.UUID       `gorm:"primaryKey;column:history_id"`
-	SessionID uuid.UUID       `gorm:"column:session_id"`
-	Message   json.RawMessage `gorm:"column:message;type:jsonb"`
-	CreatedAt time.Time       `gorm:"column:created_at"`
-	UpdatedAt time.Time       `gorm:"column:updated_at"`
+// type ChatHistory struct {
+// 	HistoryID uuid.UUID     `gorm:"primaryKey;column:history_id"`
+// 	SessionID uuid.UUID     `gorm:"column:session_id"`
+// 	Message json.RawMessage `gorm:"column:message;type:json"`
+// 	CreatedAt time.Time 	`gorm:"column:created_at"`
+// 	UpdatedAt time.Time 	`gorm:"column:updated_at"`
 
-	Session ChatSession `gorm:"references:SessionID"`
-}
+// 	Session ChatSession 	`gorm:"references:SessionID"`
+// }
+

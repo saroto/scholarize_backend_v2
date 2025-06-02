@@ -62,6 +62,7 @@ func HandleResearchPaperUpload(c *gin.Context) {
 		return
 	}
 
+	fmt.Println("Received request to upload research paper")
 	// Get user_id from context
 	userIdCont, _ := c.Get("userID")
 

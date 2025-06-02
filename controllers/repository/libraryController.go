@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"root/config"
 	"root/constant"
+	"root/controllers/chat"
 	"root/database"
 	"root/meilisearch"
 	"root/model"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var searchResult struct {
@@ -521,6 +523,24 @@ func HandleResearchPaperSemanticSearch(c *gin.Context) {
 // TODO: CHANGED TO PUBLIC ID
 // Get individual research paper data
 func HandleGetIndividualPaperPage(c *gin.Context) {
+
+	// Get authenticated user
+	userIdCont, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	userID, ok := userIdCont.(int)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Invalid user ID",
+		})
+		return
+	}
+
 	// Get the paper ID from the URL
 	idStr := c.Param("id")
 
@@ -585,9 +605,24 @@ func HandleGetIndividualPaperPage(c *gin.Context) {
 	// Get information about the departments that the paper belongs to
 	paperInfo, _ := GetEachResearchPaperInfoOnQuery(paper.ResearchPaperID)
 
+	session, _, err := chat.CreateChatSessionIfNotExists(userID, paper.ResearchPaperID)
+	
+	if err != nil {
+		log.Printf("Failed to create/get session for paper %s: %v", paper.ResearchPaperID, err)
+		// You might want to return the error here or continue with empty session ID
+	}
+
+	fmt.Println("Session", session)
+
+	var sessionID uuid.UUID  
+	if err == nil {
+		sessionID = session.SessionID 
+	}
+
 	// Return the paper if everything is ok
 	c.JSON(http.StatusOK, gin.H{
 		"message":          "Research paper retrieved successfully!",
+		"session" :         sessionID,
 		"paper_info":       paperInfo,
 		"raw_paper":        paper,
 		"fulltext_content": content,
