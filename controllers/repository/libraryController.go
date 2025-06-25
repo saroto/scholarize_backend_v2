@@ -121,8 +121,16 @@ func MeiliSearchQueryFilter(searchTerm string, departmentFilter, researchTypeFil
 		fmt.Println("ID From Meili: ", uniqueIDs)
 		query = query.Where("research_paper.research_paper_id IN (?)", uniqueIDs)
 	} else {
+		// if len(publishedYearFilter) == 0 {
+		// 	query = query.Order("research_paper.research_title " + sortOrder)
+		// }
 		if len(publishedYearFilter) == 0 {
-			query = query.Order("research_paper.research_title " + sortOrder)
+			// query = query.Order("research_paper.research_title " + sortOrder)
+			query = query.
+			Select(`DISTINCT research_paper.research_paper_id, research_paper.published_at, research_paper.research_title, LOWER(REGEXP_REPLACE(research_paper.research_title, '^[\"”'']+', '', 'g')) AS sort_title`).
+			Order("sort_title " + sortOrder)
+
+			fmt.Println("No search term, ordering by title",query)
 		}
 	}
 
@@ -510,7 +518,7 @@ func HandleResearchPaperSearch(c *gin.Context) {
 
 func HandleHybridSearch(c *gin.Context) {
 	// Extract filters from the POST form
-	searchEngine := c.DefaultQuery("search_engine", "semantic")
+	searchEngine := c.DefaultQuery("search_engine", "meilisearch")
 	searchTerm := c.Query("search")
 	departmentFilters := c.QueryArray("department")
 	researchTypeFilters := c.QueryArray("research_type")

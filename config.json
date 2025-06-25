@@ -1,7 +1,7 @@
 {
   "database": {
     "driver": "postgres",
-    "host": "18.140.66.69",
+    "host": "159.223.37.185",
     "port": 5432,
     "user": "scholarize",
     "password": "fypiscrying",
@@ -9,12 +9,12 @@
     "auto_migration": false
   },
   "meilisearch": {
-    "host": "http://159.223.37.185:2222",
+    "host": "http://localhost:7700",
     "api_key": "WeWillOnlyDoPreOralDefense",
     "index": {
       "research_paper": "research_paper_index",
-      "fulltext": "fulltext_tmey",
-      "cleantext": "cleantext_tmey"
+      "fulltext": "fulltext_index",
+      "cleantext": "clean_text_index"
     }
   },
   "semantic_search": {
