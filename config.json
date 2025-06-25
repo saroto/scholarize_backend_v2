@@ -68,6 +68,10 @@
       "collab_delete": "/delete-collab-file"
     }
   },
+  "rabbitMQ": {
+    "url": "amqp://sparcs:sparcs123@159.223.37.185:5672/",
+    "queue_name": "approval_queue"
+  },
   "secret_jwt": {
     "key": "FYPisTooFast"
   },
