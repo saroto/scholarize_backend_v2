@@ -212,7 +212,7 @@ func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchType
 		Where("research_paper.research_paper_status = 'published'")
 
 
-	fmt.Println("Search Term: ", query)
+	fmt.Println("Search Term: ", sortOrder)
 	// Apply department id filter
 	// if len(departmentFilter) > 0 {
 	// 	query = query.Where("department.department_id IN (?)", departmentFilter)
@@ -231,6 +231,15 @@ func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchType
 	}
 
 	baselineIDs := []int{}
+
+	// if searchTerm == "" {
+	// if sortOrder != "ASC" && sortOrder != "DESC" {
+	// 	sortOrder = "ASC"
+	// 	}
+	// 	query = query.Order("research_paper.research_title " + sortOrder)
+	// 	fmt.Println("No search term, ordering by title", query)
+	// }
+
 
 	if searchTerm != "" {
 
@@ -275,10 +284,16 @@ func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchType
 		query = query.Where("research_paper.research_paper_id IN (?)", uniqueIDs)
 	} else {
 		if len(publishedYearFilter) == 0 {
-			query = query.Order("research_paper.research_title " + sortOrder)
+			// query = query.Order("research_paper.research_title " + sortOrder)
+			query = query.
+			Select(`DISTINCT research_paper.research_paper_id, research_paper.published_at, research_paper.research_title, LOWER(REGEXP_REPLACE(research_paper.research_title, '^[\"”'']+', '', 'g')) AS sort_title`).
+			Order("sort_title " + sortOrder)
+
+			fmt.Println("No search term, ordering by title",query)
 		}
 	}
 
+	
 	// Apply published year filter
 	if len(publishedYearFilter) > 0 {
 		query = query.Where("EXTRACT(YEAR FROM research_paper.published_at) IN (?)", publishedYearFilter).
@@ -493,6 +508,63 @@ func HandleResearchPaperSearch(c *gin.Context) {
 	})
 }
 
+func HandleHybridSearch(c *gin.Context) {
+	// Extract filters from the POST form
+	searchEngine := c.DefaultQuery("search_engine", "semantic")
+	searchTerm := c.Query("search")
+	departmentFilters := c.QueryArray("department")
+	researchTypeFilters := c.QueryArray("research_type")
+	publishedYearFilters := c.QueryArray("published_year")
+	sortOrder := c.DefaultQuery("sort", "ASC")
+
+	// // Fetch the IDs of research papers that match the filters
+	// paperIds, err := ResearchPaperSearchQuery(searchTerm, departmentFilters, researchTypeFilters, publishedYearFilters, sortOrder)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching paper IDs"})
+	// 	return
+	// }
+
+	var paperIds []int
+	var err error
+
+	switch searchEngine {
+	case "meilisearch":
+		paperIds, err = MeiliSearchQueryFilter(searchTerm, departmentFilters, researchTypeFilters, publishedYearFilters, sortOrder)
+	case "semantic":
+		paperIds, err = SemanticSearchQueryFilter(searchTerm, departmentFilters, researchTypeFilters, publishedYearFilters, sortOrder)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or missing search_engine parameter"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching paper IDs"})
+		return
+	}
+	// Fetch the IDs of research papers that match the filters
+	// paperIds, err := MeiliSearchQueryFilter(searchTerm, departmentFilters, researchTypeFilters, publishedYearFilters, sortOrder)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching paper IDs"})
+	// 	return
+	// }
+
+	// Fetch detailed information for each paper
+	var papersInfo []constant.QueryResearchPaperInfo
+	fmt.Println("Paper IDs: ", paperIds)
+	for _, paperId := range paperIds {
+		paperInfo, err := GetEachResearchPaperInfoOnQuery(paperId)
+		if err != nil {
+			log.Printf("Error fetching info for paper ID %d: %v", paperId, err)
+			continue
+		}
+		papersInfo = append(papersInfo, paperInfo)
+	}
+
+	// Respond with the fetched paper information
+	c.JSON(http.StatusOK, gin.H{
+		"papers": papersInfo,
+	})
+}
 func HandleResearchPaperSemanticSearch(c *gin.Context) {
 	searchTerm := c.Query("search")
 	departmentFilters := c.QueryArray("department")

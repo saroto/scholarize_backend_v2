@@ -156,6 +156,7 @@ func HandleResearchPaperUpload(c *gin.Context) {
 	laravelURL := config.GetFileServiceURL("storefile_cleantext")
 
 	uploadResp, err := UploadFileAndTextToLaravel(file, fullText, laravelURL)
+	fmt.Print("Upload Response: ", uploadResp)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error uploading file"})
 		return
@@ -294,6 +295,8 @@ func uploadCleanTextToDatabase(cleanText string) (int, error) {
 	if result.Error != nil {
 		return 0, result.Error
 	}
+
+	fmt.Println("Clean text record created with ID:", cleanTextRecord.CleantextID)
 
 	return cleanTextRecord.CleantextID, nil
 }

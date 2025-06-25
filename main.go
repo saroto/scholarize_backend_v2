@@ -111,6 +111,8 @@ func main() {
 
 		// repo.GET("/researchlibrary", repository.HandleResearchPaperSearch)
 		repo.GET("/researchlibrary", repository.HandleResearchPaperSemanticSearch)
+
+		// repo.GET("/researchlibrary", repository.HandleHybridSearch)
 		repo.GET("/researchlibrary/:id", repository.HandleGetIndividualPaperPage)
 
 		repo.GET("/uploadform", repository.GetResearchPaperUploadFormData)

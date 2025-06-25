@@ -1,7 +1,7 @@
 {
   "database": {
     "driver": "postgres",
-    "host": "159.223.37.185",
+    "host": "18.140.66.69",
     "port": 5432,
     "user": "scholarize",
     "password": "fypiscrying",
