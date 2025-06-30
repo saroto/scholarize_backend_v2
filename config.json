@@ -9,7 +9,7 @@
     "auto_migration": false
   },
   "meilisearch": {
-    "host": "http://localhost:7700",
+    "host": "http://159.223.37.185:2222",
     "api_key": "WeWillOnlyDoPreOralDefense",
     "index": {
       "research_paper": "research_paper_index",

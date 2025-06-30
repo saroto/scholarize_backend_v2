@@ -325,18 +325,13 @@ func HandleApproveRejectSubmission(c *gin.Context) {
 
 	// Approve the paper
 	if approvalStatus == "approve" {
-		// result := database.Db.Model(&paper).Update("research_paper_status", "published")
-		// if result.Error != nil {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error approving research paper"})
-		// 	return
-		// }
 
-		// // Update the published date
-		// result = database.Db.Model(&paper).Update("published_at", time.Now())
-		// if result.Error != nil {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating published date"})
-		// 	return
-		// }
+		// Update the published date
+		result := database.Db.Model(&paper).Update("research_paper_status", "in_progress")
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error approving research paper"})
+			return
+		}
 
 		approvalEmail := c.PostForm("approval_email")
 		if approvalEmail == "" {

@@ -7,6 +7,7 @@ import (
 	"root/database"
 	"root/mail"
 	"root/model"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -32,6 +33,18 @@ func UpdatePaperStatus(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update research paper status"})
 		return
 	}
+	updateStatus = database.Db.Model(&paper).Update("published_at", time.Now())
+	if updateStatus.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating published date"})
+		return
+	}
+
+	updateStatus = database.Db.Model(&paper).Update("job_status", "completed")
+	if updateStatus.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating job status"})
+		return
+	}
+
 	err := notification.InsertApprovalNotification(paper.ResearchTitle, paper.UserID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error inserting approval notification"})
@@ -58,6 +71,7 @@ func NotifyUserForFailPaper(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Research paper not found"})
 		return
 	}
+
 	failed_paper := viper.GetBool("mailsmtp.toggle.userpanel.fail_pdf_process")
 	fmt.Printf("senting failed paper email: %t\n", failed_paper)
 	if failed_paper {
@@ -78,6 +92,17 @@ func NotifyUserForFailPaper(c *gin.Context) {
 		if errSending != nil {
 			fmt.Errorf("Error sending email to user %s: %v", approval_email, errSending)
 		}
+	}
+	// Update the research paper status to "awaiting"
+	updateStatus := database.Db.Model(&paper).Update("research_paper_status", "awaiting")
+	if updateStatus.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update research paper status"})
+		return
+	}
+	updateStatus = database.Db.Model(&paper).Update("job_status", "failed")
+	if updateStatus.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update job status"})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Notification email sent successfully"})
 }

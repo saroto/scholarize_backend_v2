@@ -105,16 +105,6 @@ func (ResearchType) TableName() string {
 	return "research_type"
 }
 
-// enum for job_status
-type JobStatus string
-
-const (
-	JobStatusPending      JobStatus = "pending"
-	JobStatusInProcessing JobStatus = "in_progress"
-	JobStatusCompleted    JobStatus = "completed"
-	JobStatusFailed       JobStatus = "failed"
-)
-
 type ResearchPaper struct {
 	ResearchPaperID     int       `gorm:"primaryKey;column:research_paper_id"`
 	PublicID            string    `gorm:"column:public_id"`
@@ -126,6 +116,7 @@ type ResearchPaper struct {
 	Advisor             string    `gorm:"column:advisor;type:text"`
 	PDFPath             string    `gorm:"column:pdf_path;type:text"`
 	ResearchPaperStatus string    `gorm:"column:research_paper_status"`
+	JobStatus           string    `gorm:"column:job_status"`
 	RejectedReason      string    `gorm:"column:rejected_reason" json:"rejected_reason,omitempty"`
 	FulltextID          *int      `gorm:"column:fulltext_id"`
 	CleantextID         *int      `gorm:"column:cleantext_id"`
@@ -136,22 +127,6 @@ type ResearchPaper struct {
 
 func (ResearchPaper) TableName() string {
 	return "research_paper"
-}
-
-type JobQueue struct {
-	JobID         int       `gorm:"primaryKey;column:id"`
-	PaperID       int       `gorm:"column:paper_id"`
-	PaperTitle    string    `gorm:"column:paper_title;type:text"`
-	ApprovalEmail string    `gorm:"column:approval_email;type:text"`
-	Status        JobStatus `gorm:"column:status;default:'pending'"`
-	Attempts      int       `gorm:"column:attempts;default:0"`
-	Error         string    `gorm:"column:error;type:text;default:null"`
-	CreatedAt     time.Time `gorm:"column:created_at;type:timestamp"`
-	UpdatedAt     time.Time `gorm:"column:updated_at;type:timestamp"`
-}
-
-func (JobQueue) TableName() string {
-	return "job_queue"
 }
 
 type Fulltext struct {
