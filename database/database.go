@@ -63,7 +63,6 @@ func AutoMigrateDB() error {
 		&model.TaskComment{}, &model.SubtaskComment{}, &model.File{},
 		&model.Folder{}, &model.FileFolder{}, &model.Schedule{},
 		&model.ScheduleCollab{}, &model.Notification{},
-		&model.ChatSession{}, &model.JobQueue{},
 	}
 	for _, model := range models {
 		if err := Db.AutoMigrate(model); err != nil {
