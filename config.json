@@ -9,7 +9,7 @@
     "auto_migration": false
   },
   "meilisearch": {
-    "host": "http://localhost:7700",
+    "host": "http://159.223.37.185:2222",
     "api_key": "WeWillOnlyDoPreOralDefense",
     "index": {
       "research_paper": "research_paper_index",
@@ -67,6 +67,10 @@
       "collab_download": "/download-collab-file/",
       "collab_delete": "/delete-collab-file"
     }
+  },
+  "rabbitMQ": {
+    "url": "amqp://sparcs:sparcs123@159.223.37.185:5672/",
+    "queue_name": "approval_queue"
   },
   "secret_jwt": {
     "key": "FYPisTooFast"
