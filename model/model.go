@@ -125,7 +125,7 @@ type ResearchPaper struct {
 	Advisor             string              `gorm:"column:advisor;type:text"`
 	PDFPath             string              `gorm:"column:pdf_path;type:text"`
 	ResearchPaperStatus string              `gorm:"column:research_paper_status"`
-	PdfProcessingStatus PdfProcessingStatus `gorm:"column:pdf_processing_status;default:'processing'"`
+	// PdfProcessingStatus PdfProcessingStatus `gorm:"column:pdf_processing_status;default:'processing'"`
 	RejectedReason      string              `gorm:"column:rejected_reason" json:"rejected_reason,omitempty"`
 	FulltextID          *int                `gorm:"column:fulltext_id"`
 	CleantextID         *int                `gorm:"column:cleantext_id"`

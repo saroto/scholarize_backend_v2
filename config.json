@@ -56,9 +56,9 @@
     "gmail.com": true
   },
   "file_service": {
-    "base_url2": "http://localhost:8000/api",
-    "base_url": "http://159.223.37.185:2223/api",
-    "backup_base_url": "http://10.104.0.3:8890/api",
+    "base_url2": "http://localhost:8001/api",
+    "base_url": "http://localhost:8001/api",
+    "backup_base_url": "http://localhost:8001/api",
     "endpoints": {
       "cleantext": "/cleantext",
       "storefile_cleantext": "/storefile-cleantext",

@@ -94,6 +94,7 @@ func main() {
 		api.GET("/joincollab/:token", collaboration.HandleJoinCollab)
 
 		api.GET("/browse", repository.HandleHybridSearch)
+		api.GET("/browse/:id", repository.HandleGetIndividualPapeprForPublicUser)
 	}
 
 	// Group the routes requires Jwt Token
