@@ -107,29 +107,31 @@ func NotifyUserForFailPaper(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Notification email sent successfully"})
 }
 
-// func GetPaperStatusForPdfProcessing(c *gin.Context) {
-// 	// Create a variable to hold the research paper
-// 	var job model.JobQueue
-// 	job_id := c.PostForm("job_id")
-// 	fmt.Printf("Received Job ID: %s\n", job_id)
-// 	if job_id == "" {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Job ID is required"})
-// 		return
-// 	}
-// 	// Find the paper by research_paper_id
+func HandleGetJobStatus(c *gin.Context) {
 
-// 	result := database.Db.Where("id = ?", job_id).First(&job)
-// 	if result.Error != nil {
-// 		c.JSON(http.StatusNotFound, gin.H{"error": "Research paper not found"})
-// 		return
-// 	}
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"paper_id":    job.PaperID,
-// 		"paper_title": job.PaperTitle,
-// 		"status":      job.Status,
-// 		"error":       job.Error,
-// 		"attempts":    job.Attempts,
-// 		"message":     "Paper status retrieved successfully",
-// 	})
+	var paper []model.ResearchPaper
+	if err := database.Db.Where("research_paper_status = 'in_progress'").Find(&paper).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No paper is currently in progress"})
+		return
+	}
+	total_paper := len(paper)
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Papers in progress",
+		"data":        paper,
+		"total_paper": total_paper,
+	})
+}
 
-// }
+func HandleGetFailJob(c *gin.Context) {
+	var paper []model.ResearchPaper
+	if err := database.Db.Where("job_status = 'failed'").Find(&paper).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No paper is currently awaiting"})
+		return
+	}
+	total_paper := len(paper)
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Papers awaiting for approval",
+		"data":        paper,
+		"total_paper": total_paper,
+	})
+}

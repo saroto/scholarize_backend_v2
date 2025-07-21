@@ -126,6 +126,7 @@ func HandleUpdateResearchPaper(c *gin.Context) {
 }
 
 func HandleUpdateResearchPaperTitle(c *gin.Context) {
+
 	paperIDStr := c.PostForm("research_paper_id")
 	if paperIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Paper ID is required"})
@@ -141,7 +142,7 @@ func HandleUpdateResearchPaperTitle(c *gin.Context) {
 
 	// Check if the paper exists
 	var paper model.ResearchPaper
-	if err := database.Db.Select("research_paper_id").Where("research_paper_id = ?", paperID).First(&paper).Error; err != nil {
+	if err := database.Db.Select("research_paper_id", "research_title").Where("research_paper_id = ?", paperID).First(&paper).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Paper not found"})
 		return
 	}
@@ -152,7 +153,12 @@ func HandleUpdateResearchPaperTitle(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Title already exists"})
 		return
 	}
-
+	old_paper_title := paper.ResearchTitle
+	fmt.Println("Old Paper Title:", old_paper_title)
+	if err := database.Db.Table("langchain_pg_collection").Where("name = ?", old_paper_title).Update("name", newTitle).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Collection not found"})
+		return
+	}
 	// Update the title of paper
 	if err := database.Db.Model(&model.ResearchPaper{}).Where("research_paper_id = ?", paperID).Update("research_title", newTitle).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update title"})
