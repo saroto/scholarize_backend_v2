@@ -94,9 +94,10 @@ func main() {
 		api.GET("/joincollab/:token", collaboration.HandleJoinCollab)
 
 		api.GET("/browse", repository.HandleHybridSearch)
-// 		api.GET("/browse", repository.HandleResearchPaperSemanticSearch)
+		// 		api.GET("/browse", repository.HandleResearchPaperSemanticSearch)
 		api.POST("/repository/mypublications/updateStatus", repository.UpdatePaperStatus)
 		api.POST("/repository/mypublications/notifyFailPaper", repository.NotifyUserForFailPaper)
+
 	}
 
 	// Group the routes requires Jwt Token
@@ -145,6 +146,10 @@ func main() {
 		hod.GET("/submissions/:id",
 			middleware.RoleHasPermissionMiddleware(constant.ResearchSubmissionApproval),
 			repository.HandlePreviewSubmission)
+
+		hod.GET("/submissions/inprogress",
+			middleware.RoleHasPermissionMiddleware(constant.ResearchSubmissionApproval),
+			repository.HandleGetJobStatus)
 		hod.POST("/submissions/:id",
 			middleware.RoleHasPermissionMiddleware(constant.ResearchSubmissionApproval),
 			repository.HandleApproveRejectSubmission)
