@@ -94,11 +94,17 @@ func main() {
 		api.GET("/joincollab/:token", collaboration.HandleJoinCollab)
 
 		api.GET("/browse", repository.HandleHybridSearch)
+<<<<<<< HEAD
 		api.GET("/browse/:id", repository.HandleGetIndividualPapeprForPublicUser)
 		// 		api.GET("/browse", repository.HandleResearchPaperSemanticSearch)
 		api.POST("/repository/mypublications/updateStatus", repository.UpdatePaperStatus)
 		api.POST("/repository/mypublications/notifyFailPaper", repository.NotifyUserForFailPaper)
 
+=======
+// 		api.GET("/browse", repository.HandleResearchPaperSemanticSearch)
+		api.POST("/repository/mypublications/updateStatus", repository.UpdatePaperStatus)
+		api.POST("/repository/mypublications/notifyFailPaper", repository.NotifyUserForFailPaper)
+>>>>>>> d7813ae0cd0d53aae37f0e6b288f855d4f0315ad
 	}
 
 	// Group the routes requires Jwt Token

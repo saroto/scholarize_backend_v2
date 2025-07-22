@@ -16,11 +16,9 @@ func RabbitMqConnection() (*amqp.Connection, error) {
 	// Connect to RabbitMQ
 	conn, err := amqp.Dial(viper.GetString("rabbitmq.url"))
 	if err != nil {
-		fmt.Printf("Failed to connect to RabbitMQ: %s\n", err)
 		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
 	}
 
-	fmt.Println("Successfully connected to RabbitMQ")
 	// Return the connection
 	return conn, nil
 }
@@ -92,20 +90,16 @@ func Consumer() {
 
 func Producer(body json.RawMessage) error {
 	conn, err := RabbitMqConnection()
+	queueName := viper.GetString("rabbitmq.queue_name")
 	if err != nil {
-		// Error already printed inside RabbitMqConnection
 		return fmt.Errorf("failed to connect to RabbitMQ: %w", err)
 	}
 	defer conn.Close()
-
 	ch, err := conn.Channel()
 	if err != nil {
-		fmt.Printf("Failed to open a channel: %s\n", err)
 		return fmt.Errorf("failed to open a channel: %w", err)
 	}
 	defer ch.Close()
-
-	fmt.Println("Channel opened successfully in Producer")
 
 	err = ch.ExchangeDeclare(
 		"dlx_exchange",
@@ -119,7 +113,6 @@ func Producer(body json.RawMessage) error {
 	if err != nil {
 		return fmt.Errorf("failed to declare dead letter exchange: %w", err)
 	}
-
 	_, err = ch.QueueDeclare(
 		"dlx_queue", // must match your dead-letter-routing-key
 		true,
@@ -131,7 +124,6 @@ func Producer(body json.RawMessage) error {
 	if err != nil {
 		return fmt.Errorf("failed to declare dead letter queue: %w", err)
 	}
-
 	err = ch.QueueBind(
 		"dlx_queue",    // queue name
 		"dlx_queue",    // routing key (must match DL routing key)
@@ -148,9 +140,6 @@ func Producer(body json.RawMessage) error {
 		"x-dead-letter-exchange":    "dlx_exchange",
 		"x-dead-letter-routing-key": "dlx_queue",
 	}
-
-	queueName := viper.GetString("rabbitmq.queue_name")
-
 	_, err = ch.QueueDeclare(
 		queueName,
 		true,  // durable
@@ -162,7 +151,6 @@ func Producer(body json.RawMessage) error {
 	if err != nil {
 		return fmt.Errorf("failed to declare a queue: %w", err)
 	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -180,7 +168,6 @@ func Producer(body json.RawMessage) error {
 	if err != nil {
 		return fmt.Errorf("failed to publish a message: %w", err)
 	}
-
 	fmt.Printf("Message sent to queue %s: %s\n", queueName, body)
 	return nil
 }

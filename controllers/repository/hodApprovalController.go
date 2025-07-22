@@ -352,11 +352,7 @@ func HandleApproveRejectSubmission(c *gin.Context) {
 		if err != nil {
 			log.Fatalf("failed to marshal data: %v", err)
 		}
-		err = queue.Producer(body)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish to RabbitMQ"})
-			return
-		}
+		queue.Producer(body)
 
 	}
 
