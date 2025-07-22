@@ -24,6 +24,7 @@ import (
 
 func main() {
 	// Set the TZ environment variable to Asia/Bangkok (UTC+7)
+
 	os.Setenv("TZ", "Asia/Bangkok")
 
 	// Ensure the time package uses the correct timezone
@@ -37,9 +38,8 @@ func main() {
 	database.ConnectDB()
 	defer database.CloseDBConnection()
 	meilisearch.InitMeiliSearch()
-
 	// Run database migrations
-	err = database.AutoMigrateDB();
+	err = database.AutoMigrateDB()
 	if err != nil {
 		fmt.Printf("Failed to migrate the database: %v", err)
 	}
@@ -95,6 +95,10 @@ func main() {
 
 		api.GET("/browse", repository.HandleHybridSearch)
 		api.GET("/browse/:id", repository.HandleGetIndividualPapeprForPublicUser)
+		// 		api.GET("/browse", repository.HandleResearchPaperSemanticSearch)
+		api.POST("/repository/mypublications/updateStatus", repository.UpdatePaperStatus)
+		api.POST("/repository/mypublications/notifyFailPaper", repository.NotifyUserForFailPaper)
+
 	}
 
 	// Group the routes requires Jwt Token
@@ -123,12 +127,14 @@ func main() {
 		repo.GET("/mypublications/awaiting/:id", repository.HandlePreviewAwaitingPaper)
 		repo.GET("/mypublications/rejected/:id", repository.HandlePreviewRejectedPaper)
 		repo.POST("/mypublications/rejected/:id", repository.HandleResubmitRejectedPaper)
+		// repo.POST("/mypublications/updateStatus", repository.UpdatePaperStatus)
+		// repo.POST("/researchpaper/status", repository.GetPaperStatusForPdfProcessing)
 	}
 
 	//Chat Routes
 	chatSession := api.Group("/chat")
 	{
-		chatSession.GET("/session/:sessionID",chat.HandleGetChatSession)
+		chatSession.GET("/session/:sessionID", chat.HandleGetChatSession)
 		chatSession.POST("/update-session/:sessionID", chat.UpdateChatSessionSecure)
 	}
 
@@ -141,6 +147,10 @@ func main() {
 		hod.GET("/submissions/:id",
 			middleware.RoleHasPermissionMiddleware(constant.ResearchSubmissionApproval),
 			repository.HandlePreviewSubmission)
+
+		hod.GET("/submissions/inprogress",
+			middleware.RoleHasPermissionMiddleware(constant.ResearchSubmissionApproval),
+			repository.HandleGetJobStatus)
 		hod.POST("/submissions/:id",
 			middleware.RoleHasPermissionMiddleware(constant.ResearchSubmissionApproval),
 			repository.HandleApproveRejectSubmission)
@@ -333,6 +343,12 @@ func main() {
 	{
 		superAdmin.POST("/transfersa", administrator.HandleTransferSuperAdmin)
 	}
+
+	// go func() {
+	// 	log.Print("Start RabbitMQ Consumer")
+	// 	// Call the Consumer function from the queue package
+	// 	queue.Consumer()
+	// }()
 
 	// Start the server on port 2812 on production
 	r.Run(":2812")

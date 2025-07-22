@@ -1,0 +1,137 @@
+package repository
+
+import (
+	"fmt"
+	"net/http"
+	"root/controllers/notification"
+	"root/database"
+	"root/mail"
+	"root/model"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
+)
+
+func UpdatePaperStatus(c *gin.Context) {
+	var paper model.ResearchPaper
+	research_paper_id := c.PostForm("research_paper_id")
+	status := c.PostForm("status")
+
+	if research_paper_id == "" || status == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Research paper ID and status are required"})
+		return
+	}
+
+	result := database.Db.Where("research_paper_id = ?", research_paper_id).First(&paper)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Research paper not found"})
+		return
+	}
+	updateStatus := database.Db.Model(&paper).Update("research_paper_status", "published")
+	if updateStatus.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update research paper status"})
+		return
+	}
+	updateStatus = database.Db.Model(&paper).Update("published_at", time.Now())
+	if updateStatus.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating published date"})
+		return
+	}
+
+	updateStatus = database.Db.Model(&paper).Update("job_status", "completed")
+	if updateStatus.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating job status"})
+		return
+	}
+
+	err := notification.InsertApprovalNotification(paper.ResearchTitle, paper.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error inserting approval notification"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Paper status updated successfully",
+		"paper_id": research_paper_id,
+		"status":   status,
+	})
+}
+
+func NotifyUserForFailPaper(c *gin.Context) {
+	approval_email := c.PostForm("approval_email")
+	research_paper_id := c.PostForm("research_paper_id")
+	if approval_email == "" || research_paper_id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Approval email and research paper ID are required"})
+		return
+	}
+	var paper model.ResearchPaper
+	result := database.Db.Where("research_paper_id = ?", research_paper_id).First(&paper)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Research paper not found"})
+		return
+	}
+
+	failed_paper := viper.GetBool("mailsmtp.toggle.userpanel.fail_pdf_process")
+	fmt.Printf("senting failed paper email: %t\n", failed_paper)
+	if failed_paper {
+		emailBody := mail.EmailTemplateData{
+			PreviewHeader: "Paper Processing Failed",
+			EmailPurpose:  "Please approve the paper " + paper.ResearchTitle + " again. Because the PDF processing failed.",
+			ActionURL:     viper.GetString("client.userpanel") + "/dashboard/repository/hod-submission",
+			Action:        "View Paper",
+			EmailEnding:   "Please check the status of your paper.",
+		}
+		emailBodyData, err := mail.CustomizeHTML(emailBody)
+		if err != nil {
+			fmt.Errorf("Error customizing email: %v", err)
+		}
+
+		// Send email to user
+		errSending := mail.SendEmail(approval_email, "Scholarize - Paper Processing Failed", emailBodyData)
+		if errSending != nil {
+			fmt.Errorf("Error sending email to user %s: %v", approval_email, errSending)
+		}
+	}
+	// Update the research paper status to "awaiting"
+	updateStatus := database.Db.Model(&paper).Update("research_paper_status", "awaiting")
+	if updateStatus.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update research paper status"})
+		return
+	}
+	updateStatus = database.Db.Model(&paper).Update("job_status", "failed")
+	if updateStatus.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update job status"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Notification email sent successfully"})
+}
+
+func HandleGetJobStatus(c *gin.Context) {
+
+	var paper []model.ResearchPaper
+	if err := database.Db.Where("research_paper_status = 'in_progress'").Find(&paper).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No paper is currently in progress"})
+		return
+	}
+	total_paper := len(paper)
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Papers in progress",
+		"data":        paper,
+		"total_paper": total_paper,
+	})
+}
+
+func HandleGetFailJob(c *gin.Context) {
+	var paper []model.ResearchPaper
+	if err := database.Db.Where("job_status = 'failed'").Find(&paper).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No paper is currently awaiting"})
+		return
+	}
+	total_paper := len(paper)
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Papers awaiting for approval",
+		"data":        paper,
+		"total_paper": total_paper,
+	})
+}
