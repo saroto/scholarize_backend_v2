@@ -1,6 +1,8 @@
 module root
 
-go 1.21.5
+go 1.23.0
+
+toolchain go1.23.11
 
 require (
 	github.com/gin-contrib/cors v1.7.2
@@ -67,6 +69,7 @@ require (
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

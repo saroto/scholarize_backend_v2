@@ -10,6 +10,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/spf13/viper"
+	"golang.org/x/time/rate"
 )
 
 func RabbitMqConnection() (*amqp.Connection, error) {
@@ -128,6 +129,7 @@ func Producer(body json.RawMessage) error {
 		false,
 		nil,
 	)
+
 	if err != nil {
 		return fmt.Errorf("failed to declare dead letter queue: %w", err)
 	}
@@ -166,21 +168,28 @@ func Producer(body json.RawMessage) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = ch.PublishWithContext(ctx,
-		"",        // exchange
-		queueName, // routing key
-		false,     // mandatory
-		false,     // immediate
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			ContentType:  "application/json",
-			Body:         body,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to publish a message: %w", err)
+	// Set up rate limiting
+	rateLimiter := rate.NewLimiter(rate.Every(1*time.Hour), 10)
+	for i := 0; i < 10; i++ {
+		err := rateLimiter.Wait(context.Background())
+		if err != nil {
+			log.Fatalf("Limiter error: %v", err)
+		}
+		err = ch.PublishWithContext(ctx,
+			"",        // exchange
+			queueName, // routing key
+			false,     // mandatory
+			false,     // immediate
+			amqp.Publishing{
+				DeliveryMode: amqp.Persistent,
+				ContentType:  "application/json",
+				Body:         body,
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to publish a message: %w", err)
+		}
 	}
-
 	fmt.Printf("Message sent to queue %s: %s\n", queueName, body)
 	return nil
 }
