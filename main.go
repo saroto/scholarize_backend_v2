@@ -94,6 +94,7 @@ func main() {
 		api.GET("/joincollab/:token", collaboration.HandleJoinCollab)
 
 		api.GET("/browse", repository.HandleHybridSearch)
+		api.GET("/browse/:id", repository.HandleGetIndividualPapeprForPublicUser)
 		// 		api.GET("/browse", repository.HandleResearchPaperSemanticSearch)
 		api.POST("/repository/mypublications/updateStatus", repository.UpdatePaperStatus)
 		api.POST("/repository/mypublications/notifyFailPaper", repository.NotifyUserForFailPaper)

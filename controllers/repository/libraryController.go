@@ -709,6 +709,81 @@ func HandleGetIndividualPaperPage(c *gin.Context) {
 	})
 }
 
+func HandleGetIndividualPapeprForPublicUser(c *gin.Context) {
+	// Get the paper ID from the URL
+	idStr := c.Param("id")
+
+	if idStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "No ID found in the request",
+		})
+		return
+	}
+
+	// Create a variable to hold the research paper
+	var paper model.ResearchPaper
+	var fulltext model.Fulltext
+
+	// Find the paper by public_id
+	result := database.Db.Where("public_id = ?", idStr).First(&paper)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Error fetching research paper",
+		})
+		return
+	}
+
+	// Check if the paper was found
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Research paper not found",
+		})
+		return
+	}
+
+	id := paper.ResearchPaperID
+
+	// Check if the paper is published
+	if paper.ResearchPaperStatus != "published" {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Forbidden: Paper is not published",
+		})
+		return
+	}
+
+	// Find the fulltext with the given ID
+	result = database.Db.First(&fulltext, id)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Error fetching fulltext",
+		})
+		return
+	}
+
+	// Check if the fulltext was found
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Fulltext not found",
+		})
+		return
+	}
+
+	// Return the full text content if everything is ok
+	content := fulltext.FulltextContent
+
+	// Get information about the departments that the paper belongs to
+	paperInfo, _ := GetEachResearchPaperInfoOnQuery(paper.ResearchPaperID)
+
+	fmt.Println("Paper Info: ", paperInfo)
+	// Return the paper if everything is ok
+	c.JSON(http.StatusOK, gin.H{
+		"message":          "Research paper retrieved successfully!",
+		"paper_info":       paperInfo,
+		"raw_paper":        paper,
+		"fulltext_content": content,
+	})
+}
+
 // Handle Download File
 func HandleDownloadResearchPaper(c *gin.Context) {
 	// Get the file path from the query parameter

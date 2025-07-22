@@ -13,6 +13,34 @@ import (
 	"github.com/spf13/viper"
 )
 
+// func GetPaperStatusForPdfProcessing(c *gin.Context) {
+// 	// Create a variable to hold the research paper
+// 	var job model.JobQueue
+// 	job_id := c.PostForm("job_id")
+// 	fmt.Printf("Received Job ID: %s\n", job_id)
+// 	if job_id == "" {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Job ID is required"})
+// 		return
+// 	}
+// 	// Find the paper by research_paper_id
+
+// 	result := database.Db.Where("id = ?", job_id).First(&job)
+// 	if result.Error != nil {
+// 		c.JSON(http.StatusNotFound, gin.H{"error": "Research paper not found"})
+// 		return
+// 	}
+// 	c.JSON(http.StatusOK, gin.H{
+// 		"paper_id":    job.PaperID,
+// 		"paper_title": job.PaperTitle,
+// 		"status":      job.Status,
+// 		"error":       job.Error,
+// 		"attempts":    job.Attempts,
+// 		"message":     "Paper status retrieved successfully",
+// 	})
+
+// }
+
+
 func UpdatePaperStatus(c *gin.Context) {
 	var paper model.ResearchPaper
 	research_paper_id := c.PostForm("research_paper_id")
