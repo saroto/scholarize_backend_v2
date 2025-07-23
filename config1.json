@@ -1,0 +1,76 @@
+{
+  "database": {
+    "driver": "postgres",
+    "host": "159.223.37.185",
+    "port": 5432,
+    "user": "scholarize",
+    "password": "fypiscrying",
+    "dbname": "db_scholarize",
+    "auto_migration": true
+  },
+  "meilisearch": {
+    "host": "http://localhost:7700",
+    "api_key": "WeWillOnlyDoPreOralDefense",
+    "index": {
+      "research_paper": "research_paper_index",
+      "fulltext": "fulltext_tmey",
+      "cleantext": "cleantext_tmey"
+    }
+  },
+  "mailsmtp": {
+    "host": "smtp.gmail.com",
+    "port": "587",
+    "email": "jseang@paragoniu.edu.kh",
+    "password": "ebqw onri rejf mjpv",
+    "toggle": {
+      "adminpanel": {
+        "new_superadmin": true,
+        "transfer_superadmin": true,
+        "add_admin": true,
+        "reset_password": true
+      },
+      "userpanel": {
+        "collab_invite": true,
+        "add_schedule": true,
+        "update_schedule": true,
+        "delete_schedule": true
+      }
+    }
+  },
+  "client": {
+    "userpanel": "http://localhost:3000",
+    "adminpanel": "http://localhost:2310"
+  },
+  "superadmin": {
+    "email": "scholarize777@gmail.com"
+  },
+  "authorized_gmail": {
+    "paragoniu.edu.kh": true,
+    "gmail.com": true
+  },
+  "file_service": {
+    "base_url": "http://159.223.37.185:2223/api",
+    "base_url2": "https://abc.scholarize.live/api",
+    "backup_base_url": "http://10.104.0.3:8890/api",
+    "endpoints": {
+      "cleantext": "/cleantext",
+      "storefile_cleantext": "/storefile-cleantext",
+      "repo_download": "/download-pdf/",
+      "collab_upload": "/upload-collab-files",
+      "collab_download": "/download-collab-file/",
+      "collab_delete": "/delete-collab-file"
+    }
+  },
+  "secret_jwt": {
+    "key": "FYPisTooFast"
+  },
+  "secret_reset_token": {
+    "key": "FYPisTooCruel"
+  },
+  "secret_invite_token": {
+    "key": "FYPisTooCrucial"
+  },
+  "default_profile_img": {
+    "admin": "https://raw.githubusercontent.com/Jemmy-PIU/Scholarize/main/admin100x100.png"
+  }
+}
