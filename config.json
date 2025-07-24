@@ -70,7 +70,10 @@
   },
   "rabbitMQ": {
     "url": "amqp://sparcs:sparcs123@159.223.37.185:5672/",
-    "queue_name": "approval_queue"
+    "queue_name": "approval_queue",
+    "api": "http://159.223.37.185:15672/api/queues/%2f/approval_queue",
+    "username": "sparcs",
+    "password": "sparcs123"
   },
   "secret_jwt": {
     "key": "FYPisTooFast"

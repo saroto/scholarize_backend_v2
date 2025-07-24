@@ -1,12 +1,11 @@
 package repository
 
 import (
-	"encoding/json"
-	"log"
+	"fmt"
 	"net/http"
+	"net/url"
 	"root/constant"
 	"root/controllers/notification"
-	"root/controllers/queue"
 	"root/database"
 	"root/model"
 	"root/permission"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 // get research papers by department and return model Research Paper
@@ -327,37 +327,65 @@ func HandleApproveRejectSubmission(c *gin.Context) {
 	if approvalStatus == "approve" {
 
 		// Update the published date
-		result := database.Db.Model(&paper).Update("research_paper_status", "in_progress")
-		if result.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error approving research paper"})
-			return
-		}
+		baseURL := viper.GetString("semantic_search.host")
+		python_url := baseURL + "/api/pdf"
 
 		approvalEmail := c.PostForm("approval_email")
 		if approvalEmail == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Approval email is required"})
 			return
 		}
-		// publish to rabbitmq
-		data := map[string]interface{}{
-			"paper_id":       paper.ResearchPaperID,
-			"research_title": paper.ResearchTitle,
-			"pdf_path":       paper.PDFPath,
-			"advisor":        paper.Advisor,
-			"author":         paper.Author,
-			"approval_email": approvalEmail,
-			"tags":           paper.Tag,
-		}
-		body, err := json.Marshal(data)
-		if err != nil {
-			log.Fatalf("failed to marshal data: %v", err)
-		}
-		err = queue.Producer(body)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish to RabbitMQ"})
+		data := url.Values{}
+		data.Set("research_paper_id", strconv.Itoa(paper.ResearchPaperID))
+		data.Set("research_title", paper.ResearchTitle)
+		data.Set("author", paper.Author)
+		data.Set("advisors", paper.Advisor)
+		data.Set("pdf_path", paper.PDFPath)
+		data.Set("tag", paper.Tag)
+
+		result := database.Db.Model(&paper).Update("research_paper_status", "in_progress")
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error approving research paper"})
 			return
 		}
+		request, err := http.NewRequest("POST", python_url, strings.NewReader(data.Encode()))
+		// can i sent form data to semantic search?
 
+		if err != nil {
+			_ = database.Db.Model(&paper).Update("research_paper_status", "awaiting") // fallback
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating request to AI service"})
+			return
+		}
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		client := &http.Client{}
+		response, err := client.Do(request)
+
+		if err != nil {
+			_ = database.Db.Model(&paper).Update("research_paper_status", "awaiting") // fallback
+			fmt.Println("Error sending request:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending request to semantic search"})
+			return
+		}
+		defer response.Body.Close()
+		if response.StatusCode == http.StatusOK {
+			// Update to published
+			if result := database.Db.Model(&paper).Update("research_paper_status", "published"); result.Error != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error setting status to published"})
+				return
+			}
+
+			// Insert notification
+			if err := notification.InsertApprovalNotification(paper.ResearchTitle, paper.UserID); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error inserting approval notification"})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"message": "Paper approved and published successfully"})
+			return
+		}
+		_ = database.Db.Model(&paper).Update("research_paper_status", "awaiting")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Semantic search returned error"})
 	}
 
 	// Reject the paper

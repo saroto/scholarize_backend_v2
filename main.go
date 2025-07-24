@@ -118,6 +118,7 @@ func main() {
 
 		repo.GET("/researchlibrary", repository.HandleHybridSearch)
 		repo.GET("/researchlibrary/:id", repository.HandleGetIndividualPaperPage)
+		repo.GET("/researchlibrary/inprogress/:id", repository.GetInProgressResearchPapers)
 
 		repo.GET("/uploadform", repository.GetResearchPaperUploadFormData)
 		repo.POST("/uploadform", repository.HandleResearchPaperUpload)

@@ -1,17 +1,24 @@
 package queue
 
 import (
-	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
+	"io"
+	"net/http"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/spf13/viper"
-	"golang.org/x/time/rate"
 )
+
+type QueueInfo struct {
+	Name                   string `json:"name"`
+	Messages               int    `json:"messages"`
+	MessagesReady          int    `json:"messages_ready"`
+	MessagesUnacknowledged int    `json:"messages_unacknowledged"`
+}
 
 func RabbitMqConnection() (*amqp.Connection, error) {
 	// Connect to RabbitMQ
@@ -26,69 +33,45 @@ func RabbitMqConnection() (*amqp.Connection, error) {
 	return conn, nil
 }
 
-func Consumer() {
-	conn, err := RabbitMqConnection()
-	if err != nil {
-		fmt.Printf("Failed to connect to RabbitMQ: %s\n", err)
-		return
+func GetTotalMessagesInQueue() int {
+	url := viper.GetString("rabbitmq.api")
+	username := viper.GetString("rabbitmq.username")
+	password := viper.GetString("rabbitmq.password")
+	if url == "" {
+		return 0
 	}
-	defer conn.Close()
-	ch, err := conn.Channel()
-	if err != nil {
-		fmt.Printf("Failed to open a channel: %s\n", err)
-		return
-	}
-	defer ch.Close()
-
-	notifyConsumer, err := ch.QueueDeclare(
-		"notification_queue",
-		true,
-		false,
-		false,
-		false,
+	req, err := http.NewRequest(
+		"GET",
+		url,
 		nil,
 	)
 	if err != nil {
-		fmt.Printf("Failed to declare a queue: %s\n", err)
-		return
+		return 0
 	}
-	err = ch.Qos(
-		1,     // prefetch count
-		0,     // prefetch size
-		false, // global
-	)
-
+	auth := username + ":" + password
+	encoded := base64.StdEncoding.EncodeToString([]byte(auth))
+	req.Header.Set("Authorization", "Basic "+encoded)
+	client := &http.Client{}
+	request, err := client.Do(req)
+	fmt.Println("request", request)
 	if err != nil {
-		fmt.Printf("Failed to set QoS: %s\n", err)
-		return
+		return 0
 	}
-	msgs, err := ch.Consume(
-		notifyConsumer.Name, // queue name
-		"",                  // consumer tag
-		true,                // auto-acknowledge
-		false,               // exclusive
-		false,               // no-local
-		false,               // no-wait
-		nil,                 // arguments
-	)
-	if err != nil {
-		fmt.Printf("Failed to register a consumer: %s\n", err)
-		return
-	}
-	var forever chan struct{}
-
-	go func() {
-		for d := range msgs {
-			log.Printf("Received a message: %s", d.Body)
-			dotCount := bytes.Count(d.Body, []byte("."))
-			t := time.Duration(dotCount)
-			time.Sleep(t * time.Second)
-			log.Printf("Done")
-			d.Ack(false)
+	defer request.Body.Close()
+	var totalMessage QueueInfo
+	if request.StatusCode == http.StatusOK {
+		bodyBytes, err := io.ReadAll(request.Body)
+		if err != nil {
+			return 0
 		}
-	}()
-	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
-	<-forever
+		fmt.Println("body", string(bodyBytes))
+		if err := json.Unmarshal(bodyBytes, &totalMessage); err != nil {
+			return 0
+		}
+		fmt.Printf("Total messages in queue: %d\n", totalMessage.Messages)
+		return totalMessage.Messages
+	}
+	return 0
 }
 
 func Producer(body json.RawMessage) error {
@@ -169,12 +152,8 @@ func Producer(body json.RawMessage) error {
 	defer cancel()
 
 	// Set up rate limiting
-	rateLimiter := rate.NewLimiter(rate.Every(1*time.Hour), 10)
-	for i := 0; i < 10; i++ {
-		err := rateLimiter.Wait(context.Background())
-		if err != nil {
-			log.Fatalf("Limiter error: %v", err)
-		}
+	totalMessage := GetTotalMessagesInQueue()
+	if totalMessage <= 5 {
 		err = ch.PublishWithContext(ctx,
 			"",        // exchange
 			queueName, // routing key
@@ -189,7 +168,10 @@ func Producer(body json.RawMessage) error {
 		if err != nil {
 			return fmt.Errorf("failed to publish a message: %w", err)
 		}
+
+		fmt.Printf("Message sent to queue %s: %s\n", queueName, body)
 	}
-	fmt.Printf("Message sent to queue %s: %s\n", queueName, body)
+
 	return nil
+
 }
