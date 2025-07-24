@@ -22,11 +22,11 @@ import (
 )
 
 var searchResult struct {
-    Message        string          `json:"message"`
-    Query          string          `json:"query"`
-    PapersFound    int             `json:"papers_found"`
-    PapersID       string          `json:"papers_id"`  // This is a string that needs conversion
-    // ResearchPapers []ResearchPaper `json:"research_papers"`
+	Message     string `json:"message"`
+	Query       string `json:"query"`
+	PapersFound int    `json:"papers_found"`
+	PapersID    string `json:"papers_id"` // This is a string that needs conversion
+	// ResearchPapers []ResearchPaper `json:"research_papers"`
 }
 
 func reverseArray(arr []int) []int {
@@ -127,10 +127,10 @@ func MeiliSearchQueryFilter(searchTerm string, departmentFilter, researchTypeFil
 		if len(publishedYearFilter) == 0 {
 			// query = query.Order("research_paper.research_title " + sortOrder)
 			query = query.
-			Select(`DISTINCT research_paper.research_paper_id, research_paper.published_at, research_paper.research_title, LOWER(REGEXP_REPLACE(research_paper.research_title, '^[\"”'']+', '', 'g')) AS sort_title`).
-			Order("sort_title " + sortOrder)
+				Select(`DISTINCT research_paper.research_paper_id, research_paper.published_at, research_paper.research_title, LOWER(REGEXP_REPLACE(research_paper.research_title, '^[\"”'']+', '', 'g')) AS sort_title`).
+				Order("sort_title " + sortOrder)
 
-			fmt.Println("No search term, ordering by title",query)
+			fmt.Println("No search term, ordering by title", query)
 		}
 	}
 
@@ -210,7 +210,6 @@ func MeiliSearchQueryFilter(searchTerm string, departmentFilter, researchTypeFil
 	return paperIds, nil
 }
 
-
 func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchTypeFilter, publishedYearFilter []string, sortOrder string) ([]int, error) {
 	query := database.Db.Model(&model.ResearchPaper{}).
 		Select("DISTINCT research_paper.research_paper_id, research_paper.published_at, research_paper.research_title").
@@ -218,7 +217,6 @@ func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchType
 		Joins("JOIN researchpaperdepartment ON research_paper.research_paper_id = researchpaperdepartment.research_paper_id").
 		Joins("JOIN department ON researchpaperdepartment.department_id = department.department_id").
 		Where("research_paper.research_paper_status = 'published'")
-
 
 	fmt.Println("Search Term: ", sortOrder)
 	// Apply department id filter
@@ -248,7 +246,6 @@ func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchType
 	// 	fmt.Println("No search term, ordering by title", query)
 	// }
 
-
 	if searchTerm != "" {
 
 		var uniqueIDs []int
@@ -261,7 +258,7 @@ func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchType
 		}
 
 		var paperIDs []int
-				// Check if papers_id was provided directly
+		// Check if papers_id was provided directly
 		if papersIDInterface, ok := searchResult["papers_id"]; ok {
 			// If papers_id is an array directly
 			if papersIDArray, ok := papersIDInterface.([]interface{}); ok {
@@ -285,7 +282,7 @@ func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchType
 		}
 
 		uniqueIDs = paperIDs
-		
+
 		fmt.Println("ID From semantic: ", uniqueIDs)
 
 		baselineIDs = uniqueIDs
@@ -294,14 +291,13 @@ func SemanticSearchQueryFilter(searchTerm string, departmentFilter, researchType
 		if len(publishedYearFilter) == 0 {
 			// query = query.Order("research_paper.research_title " + sortOrder)
 			query = query.
-			Select(`DISTINCT research_paper.research_paper_id, research_paper.published_at, research_paper.research_title, LOWER(REGEXP_REPLACE(research_paper.research_title, '^[\"”'']+', '', 'g')) AS sort_title`).
-			Order("sort_title " + sortOrder)
+				Select(`DISTINCT research_paper.research_paper_id, research_paper.published_at, research_paper.research_title, LOWER(REGEXP_REPLACE(research_paper.research_title, '^[\"”'']+', '', 'g')) AS sort_title`).
+				Order("sort_title " + sortOrder)
 
-			fmt.Println("No search term, ordering by title",query)
+			fmt.Println("No search term, ordering by title", query)
 		}
 	}
 
-	
 	// Apply published year filter
 	if len(publishedYearFilter) > 0 {
 		query = query.Where("EXTRACT(YEAR FROM research_paper.published_at) IN (?)", publishedYearFilter).
@@ -686,7 +682,7 @@ func HandleGetIndividualPaperPage(c *gin.Context) {
 	paperInfo, _ := GetEachResearchPaperInfoOnQuery(paper.ResearchPaperID)
 
 	session, _, err := chat.CreateChatSessionIfNotExists(userID, paper.ResearchPaperID)
-	
+
 	if err != nil {
 		log.Printf("Failed to create/get session for paper %s: %v", paper.ResearchPaperID, err)
 		// You might want to return the error here or continue with empty session ID
@@ -694,15 +690,15 @@ func HandleGetIndividualPaperPage(c *gin.Context) {
 
 	fmt.Println("Session", session)
 
-	var sessionID uuid.UUID  
+	var sessionID uuid.UUID
 	if err == nil {
-		sessionID = session.SessionID 
+		sessionID = session.SessionID
 	}
 
 	// Return the paper if everything is ok
 	c.JSON(http.StatusOK, gin.H{
 		"message":          "Research paper retrieved successfully!",
-		"session" :         sessionID,
+		"session":          sessionID,
 		"paper_info":       paperInfo,
 		"raw_paper":        paper,
 		"fulltext_content": content,
@@ -825,4 +821,27 @@ func HandleDownloadResearchPaper(c *gin.Context) {
 
 	// Return the response
 	c.Status(http.StatusOK)
+}
+
+func GetInProgressResearchPapers(c *gin.Context) {
+	public_research_id := c.Param("id")
+
+	var paper model.ResearchPaper
+	if public_research_id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Research paper ID is required"})
+		return
+	}
+	result := database.Db.Where("public_id = ? AND research_paper_status = ?", public_research_id, "in_progress").First(&paper)
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "No research paper found with status in progress", "data": nil})
+		return
+	}
+	if paper.ResearchPaperStatus != "in_progress" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: Paper is not in progress"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Research paper with status in progress retrieved successfully!",
+		"data":    paper,
+	})
 }
