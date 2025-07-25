@@ -756,15 +756,12 @@ func GetInProgressResearchPapers(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Research paper ID is required"})
 		return
 	}
-	result := database.Db.Where("public_id = ? AND research_paper_status = ?", public_research_id, "in_progress").First(&paper)
+	result := database.Db.Where("public_id = ? ", public_research_id).First(&paper)
 	if result.RowsAffected == 0 {
 		c.JSON(http.StatusOK, gin.H{"message": "No research paper found with status in progress", "data": nil})
 		return
 	}
-	if paper.ResearchPaperStatus != "in_progress" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: Paper is not in progress"})
-		return
-	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Research paper with status in progress retrieved successfully!",
 		"data":    paper,
